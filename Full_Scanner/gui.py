@@ -6,6 +6,7 @@ import numpy as np
 from card_detector import CardDetector
 from card_recognizer import CardRecognizer
 from card_pricer import CardPricer
+import threading
 
 class GUI:
     def __init__(self, app):
@@ -52,34 +53,44 @@ class GUI:
             self.name_region_label.configure(image=name_region)
 
     def start_scanning(self):
-        try:
-            # Get a frame from the card detector
-            frame, name_region = self.card_detector.detect_card()
+    # Check if a thread is already running
+        if hasattr(self, "scanning_thread") and self.scanning_thread.is_alive():
+            return
 
-            # If a name region is detected, recognize the card's name
-            if name_region is not None:
-                card_name = self.card_recognizer.extract_card_name(name_region)
-                
-                if card_name:
-                    # Display the recognized card name in the console
-                    #print("Recognized Card Name:", card_name)
+        def scan_thread():
+            try:
+                # Get a frame from the card detector
+                frame, name_region = self.card_detector.detect_card()
 
-                    # Update the GUI label with the recognized card name
-                    self.recognized_name_label.config(text=f"Recognized Card: {card_name}")
+                # If a name region is detected, recognize the card's name
+                if name_region is not None:
+                    # Increase resolution and contrast of the name_region
+                    name_region = cv2.resize(name_region, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+                    name_region = cv2.convertScaleAbs(name_region, alpha=1.2, beta=50)
 
-                    # Optionally, if you want to fetch the card price and display it:
-                    card_price = self.card_pricer.get_card_price(card_name)
-                    self.recognized_name_label.config(text=f"Recognized Card: {card_name} - Price: {card_price}")
+                    # Perform OCR on the enhanced name_region
+                    card_name, confidence = self.card_recognizer.extract_card_name(name_region)
 
-            # Update the GUI
-            self.update_gui(frame, name_region)
+                    if card_name:
+                        # Update the GUI label with the recognized card name and confidence score
+                        self.recognized_name_label.config(text=f"Recognized Card: {card_name} (Confidence: {confidence:.2f})")
 
-            # Schedule the next scan
-            self.app.after(10, self.start_scanning)
+                        # Optionally, fetch the card price and display it
+                        card_price = self.card_pricer.get_card_price(card_name)
+                        self.recognized_name_label.config(text=f"Recognized Card: {card_name} (Confidence: {confidence:.2f}) - Price: {card_price}")
 
-        except Exception as e:
-            print(f"Error: {e}")
+                # Update the GUI
+                self.update_gui(frame, name_region)
 
+            except Exception as e:
+                print(f"Error: {e}")
+
+            # Start the scanning thread
+            self.scanning_thread = threading.Thread(target=scan_thread)
+            self.scanning_thread.start()
+
+            # Schedule the next scan with increased delay
+            self.app.after(100, self.start_scanning)
 
 # Create the main application window
 app = tk.Tk()
