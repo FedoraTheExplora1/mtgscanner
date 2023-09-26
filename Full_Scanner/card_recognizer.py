@@ -13,7 +13,7 @@ class CardRecognizer:
         self.SCryfall_API_URL = "https://api.scryfall.com/cards/named?fuzzy="
         
         # Load card names from the JSON file
-        with open(r'C:\Users\conno\OneDrive\Documents\Coding\mtgcardscanner\default-cards-20230924210754.json', encoding="utf-8") as json_file:
+        with open(r'C:\Users\conno\OneDrive\Documents\GitHub\mtgscanner\default-cards-20230924210754.json', encoding="utf-8") as json_file:
             self.card_data = json.load(json_file)
             self.card_names = [card["name"] for card in self.card_data]
 

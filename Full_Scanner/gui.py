@@ -48,11 +48,11 @@ class GUI:
 
     def start_scanning(self):
         # Get a frame from the card detector
-        frame = self.card_detector.get_frame()
+        frame, name_region = self.card_detector.detect_card()
 
         if frame is not None:
             # Display the frame in the GUI
-            self.update_gui(frame, None)
+            self.update_gui(frame, name_region)
 
             # Detect the card and extract the name region
             card, name_region = self.card_detector.detect_card(frame)
@@ -71,6 +71,10 @@ class GUI:
 
                     # Update the GUI with the name region
                     self.update_gui(frame, name_region)
+
+                    # Call the start_scanning method again after a short delay
+                    self.app.after(10, self.start_scanning)
+
 
 # Create the main application window
 app = tk.Tk()
