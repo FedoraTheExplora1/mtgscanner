@@ -18,6 +18,7 @@ class GUI:
 
         # Create GUI components and layout
         self.create_gui()
+        self.start_scanning()
 
     def create_gui(self):
         # Create labels for camera feed and name region
@@ -30,6 +31,10 @@ class GUI:
         # Create a button to start scanning
         self.scan_button = ttk.Button(self.app, text="Scan Card", command=self.start_scanning)
         self.scan_button.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
+        
+        #Label to display card name
+        self.recognized_name_label = ttk.Label(self.app, text="", font=("Arial", 16))
+        self.recognized_name_label.grid(row=2, column=0, columnspan=2, padx=10, pady=10)
 
     def update_gui(self, frame, name_region):
         if frame is not None:
@@ -47,33 +52,33 @@ class GUI:
             self.name_region_label.configure(image=name_region)
 
     def start_scanning(self):
-        # Get a frame from the card detector
-        frame, name_region = self.card_detector.detect_card()
+        try:
+            # Get a frame from the card detector
+            frame, name_region = self.card_detector.detect_card()
 
-        if frame is not None:
-            # Display the frame in the GUI
+            # If a name region is detected, recognize the card's name
+            if name_region is not None:
+                card_name = self.card_recognizer.extract_card_name(name_region)
+                
+                if card_name:
+                    # Display the recognized card name in the console
+                    #print("Recognized Card Name:", card_name)
+
+                    # Update the GUI label with the recognized card name
+                    self.recognized_name_label.config(text=f"Recognized Card: {card_name}")
+
+                    # Optionally, if you want to fetch the card price and display it:
+                    card_price = self.card_pricer.get_card_price(card_name)
+                    self.recognized_name_label.config(text=f"Recognized Card: {card_name} - Price: {card_price}")
+
+            # Update the GUI
             self.update_gui(frame, name_region)
 
-            # Detect the card and extract the name region
-            card, name_region = self.card_detector.detect_card(frame)
-            
-            if card is not None:
-                # Recognize the card's name
-                card_name = self.card_recognizer.extract_card_name(name_region)
+            # Schedule the next scan
+            self.app.after(10, self.start_scanning)
 
-                if card_name:
-                    # Get the card price
-                    card_price = self.card_pricer.get_card_price(card_name)
-
-                    # Display the recognized card name and price
-                    print("Recognized Card Name:", card_name)
-                    print("Card Price:", card_price)
-
-                    # Update the GUI with the name region
-                    self.update_gui(frame, name_region)
-
-                    # Call the start_scanning method again after a short delay
-                    self.app.after(10, self.start_scanning)
+        except Exception as e:
+            print(f"Error: {e}")
 
 
 # Create the main application window
@@ -85,3 +90,6 @@ gui = GUI(app)
 
 # Start the Tkinter main loop
 app.mainloop()
+
+# Release resources after closing the GUI
+gui.card_detector.release_resources()
